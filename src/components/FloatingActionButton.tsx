@@ -44,7 +44,7 @@ export default function FloatingActionButton({ onAddAsset }: { onAddAsset: (asse
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
-                value={newAsset.name || ""}
+                value={newAsset.name ?? ""}
                 onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
                 required
                 className="dark:bg-gray-700"
@@ -54,7 +54,7 @@ export default function FloatingActionButton({ onAddAsset }: { onAddAsset: (asse
               <Label htmlFor="symbol">Symbol</Label>
               <Input
                 id="symbol"
-                value={newAsset.symbol || ""}
+                value={newAsset.symbol ?? ""}
                 onChange={(e) => setNewAsset({ ...newAsset, symbol: e.target.value })}
                 required
                 className="dark:bg-gray-700"
@@ -65,8 +65,8 @@ export default function FloatingActionButton({ onAddAsset }: { onAddAsset: (asse
               <Input
                 id="value"
                 type="number"
-                value={newAsset.value || ""}
-                onChange={(e) => setNewAsset({ ...newAsset, value: e.target.value })}
+                value={newAsset.value ?? ""}
+                onChange={(e) => setNewAsset({ ...newAsset, value: Number(e.target.value) })}
                 required
                 className="dark:bg-gray-700"
               />
@@ -76,8 +76,8 @@ export default function FloatingActionButton({ onAddAsset }: { onAddAsset: (asse
               <Input
                 id="percentage"
                 type="number"
-                value={newAsset.percentage || ""}
-                onChange={(e) => setNewAsset({ ...newAsset, percentage: e.target.value })}
+                value={newAsset.percentage ?? ""}
+                onChange={(e) => setNewAsset({ ...newAsset, percentage: Number(e.target.value) })}
                 required
                 className="dark:bg-gray-700"
               />
@@ -87,6 +87,6 @@ export default function FloatingActionButton({ onAddAsset }: { onAddAsset: (asse
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }
 
