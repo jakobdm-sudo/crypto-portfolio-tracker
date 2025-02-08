@@ -69,7 +69,16 @@ export default function PieChart({ assets }: { assets: CryptoAsset[] }) {
             contentStyle={{
               backgroundColor: theme === "dark" ? "#1f2937" : "#ffffff",
               borderColor: theme === "dark" ? "#374151" : "#e5e7eb",
-              color: theme === "dark" ? "#ffffff" : "#000000",
+              borderWidth: "2px",
+              color: theme === "dark" ? "#9CA3AF" : "#000000",
+              borderRadius: "0.5rem",
+              padding: "0.5rem",
+            }}
+            labelStyle={{
+              color: theme === "dark" ? "#9CA3AF" : "#000000",
+            }}
+            itemStyle={{
+              color: theme === "dark" ? "#9CA3AF" : "#000000",
             }}
           />
           <Legend

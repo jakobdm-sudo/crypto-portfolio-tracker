@@ -8,7 +8,7 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
       {assets.map((asset) => (
         <div
           key={asset.id}
-          className="flex items-center rounded-lg bg-card p-4 shadow dark:bg-gray-800"
+          className="flex items-center rounded-lg bg-card p-4 shadow-xl dark:bg-gray-800"
         >
           <div className="mr-4 flex-shrink-0">
             <Image
