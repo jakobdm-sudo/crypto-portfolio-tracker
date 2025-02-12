@@ -4,13 +4,19 @@ import { z } from "zod";
 
 export const assetsRouter = createTRPCRouter({
   getAssets: protectedProcedure.query(async ({ ctx }) => {
-    console.log("Fetching latest prices...", new Date().toISOString());
+    
     // Fetch user assets from the database
     const assets = await ctx.db.cryptoAsset.findMany({
       where: { userId: ctx.session?.user?.id },
     });
 
     if (!assets.length) return [];
+
+    // Check if API calls are disabled (for Vercel deployment)
+    if (process.env.DISABLE_API_CALLS === "true") {
+      console.log("Skipping API fetch due to DISABLE_API_CALLS setting.");
+      return assets;
+    }
 
     // Use name for API calls (lowercase)
     const ids = assets.map((asset) => asset.name.toLowerCase()).join(",");

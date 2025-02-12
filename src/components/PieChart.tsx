@@ -34,7 +34,7 @@ export default function PieChart({ assets }: { assets: CryptoAsset[] }) {
   }));
 
   return (
-    <div className="border-width-2 mx-20 my-4 mt-12 rounded-lg border border-primary/20 bg-primary/10 p-4 pb-8 shadow-lg backdrop-blur-md">
+    <div className="border-width-2 mx-4 my-4 mt-12 rounded-lg border border-primary/20 bg-primary/10 p-4 pb-12 shadow-lg backdrop-blur-md md:mx-20">
       <ChartContainer
         config={{
           ...Object.fromEntries(
@@ -121,13 +121,33 @@ export default function PieChart({ assets }: { assets: CryptoAsset[] }) {
               }}
             />
             <Legend
+              iconType="circle"
+              iconSize={0}
               formatter={(value, entry, index) => (
-                <span
-                  style={{ color: theme === "dark" ? "#ffffff" : "#000000" }}
-                >
-                  {value}
-                </span>
+                <div className="inline-flex items-center gap-1">
+                  <span
+                    className="inline-block h-3 w-3 rounded-full"
+                    style={{ backgroundColor: entry.color }}
+                  />
+                  <span
+                    style={{ color: theme === "dark" ? "#ffffff" : "#000000" }}
+                    className="px-1"
+                  >
+                    {value}
+                  </span>
+                </div>
               )}
+              wrapperStyle={{
+                display: "flex",
+                flexWrap: "wrap",
+                justifyContent: "center",
+                rowGap: "4rem",
+                columnGap: "2rem",
+                marginTop: "1rem",
+                width: "100%",
+                position: "relative",
+                bottom: "20px",
+              }}
             />
           </RechartsChart>
         </ResponsiveContainer>

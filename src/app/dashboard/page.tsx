@@ -21,7 +21,7 @@ export default function Dashboard() {
     refetchOnReconnect: false,
     refetchOnMount: false,
     // Only rely 10 mintues interval for fetching prices
-    refetchInterval: 600000, // 10 minutes
+    refetchInterval: 18000000, // 30 minutes
   });
 
   if (status === "loading") return <p>Loading...</p>;
