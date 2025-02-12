@@ -9,7 +9,9 @@
 import { initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
-
+import { getServerSession } from "next-auth";
+import { authOptions } from "~/server/auth";
+import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
 
 /**
@@ -25,8 +27,10 @@ import { db } from "~/server/db";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
+  const session = await getServerSession(authOptions);
   return {
     db,
+    session,
     ...opts,
   };
 };
@@ -104,3 +108,22 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
  * are logged in.
  */
 export const publicProcedure = t.procedure.use(timingMiddleware);
+
+
+/**
+ * 🔒 Protected (authenticated) procedure
+ *
+ * Ensures that the user is logged in before allowing the API request.
+ */
+export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
+  if (!ctx.session?.user) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "User not authenticated" });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      user: ctx.session.user, // Pass the authenticated user to all procedures
+    },
+  });
+});

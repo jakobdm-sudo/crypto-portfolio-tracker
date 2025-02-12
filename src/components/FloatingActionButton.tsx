@@ -1,92 +1,153 @@
-"use client"
+import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
+import { api } from "~/trpc/react";
+import { Button } from "~/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
+import { Label } from "~/components/ui/label";
+import { Input } from "~/components/ui/input";
+import { Combobox } from "~/components/ui/combobox";
 
-import { useState } from "react"
-import { Plus } from "lucide-react"
-import { Button } from "~/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import type { CryptoAsset } from "~/types/CryptoAsset"
-
-export default function FloatingActionButton({ onAddAsset }: { onAddAsset: (asset: CryptoAsset) => void }) {
-  const [open, setOpen] = useState(false)
-  const [newAsset, setNewAsset] = useState<Partial<CryptoAsset>>({})
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (newAsset.name && newAsset.symbol && newAsset.value && newAsset.percentage) {
-      onAddAsset({
-        id: Date.now(),
-        name: newAsset.name,
-        symbol: newAsset.symbol,
-        value: Number(newAsset.value),
-        percentage: Number(newAsset.percentage),
-      })
-      setNewAsset({})
-      setOpen(false)
-    }
-  }
-
-  return (
-    <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button className="fixed bottom-4 right-4 rounded-full w-16 h-16 bg-primary hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90">
-            <Plus className="h-6 w-6" />
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px] dark:bg-gray-800">
-          <DialogHeader>
-            <DialogTitle>Add New Asset</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={newAsset.name ?? ""}
-                onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
-                required
-                className="dark:bg-gray-700"
-              />
-            </div>
-            <div>
-              <Label htmlFor="symbol">Symbol</Label>
-              <Input
-                id="symbol"
-                value={newAsset.symbol ?? ""}
-                onChange={(e) => setNewAsset({ ...newAsset, symbol: e.target.value })}
-                required
-                className="dark:bg-gray-700"
-              />
-            </div>
-            <div>
-              <Label htmlFor="value">Value</Label>
-              <Input
-                id="value"
-                type="number"
-                value={newAsset.value ?? ""}
-                onChange={(e) => setNewAsset({ ...newAsset, value: Number(e.target.value) })}
-                required
-                className="dark:bg-gray-700"
-              />
-            </div>
-            <div>
-              <Label htmlFor="percentage">Percentage</Label>
-              <Input
-                id="percentage"
-                type="number"
-                value={newAsset.percentage ?? ""}
-                onChange={(e) => setNewAsset({ ...newAsset, percentage: Number(e.target.value) })}
-                required
-                className="dark:bg-gray-700"
-              />
-            </div>
-            <Button type="submit">Add Asset</Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
+interface CryptoData {
+  id: string;
+  name: string;
+  symbol: string;
+  current_price: number;
 }
 
+export default function FloatingActionButton() {
+  const [open, setOpen] = useState(false);
+  const [cryptoList, setCryptoList] = useState<
+    { label: string; value: string; priceUSD: number }[]
+  >([]);
+  const [selectedCrypto, setSelectedCrypto] = useState("");
+  const [amount, setAmount] = useState(0);
+
+  const utils = api.useUtils();
+  const addAssetMutation = api.assets.addAsset.useMutation({
+    onMutate: async (newAsset) => {
+      await utils.assets.getAssets.cancel();
+      const previousAssets = utils.assets.getAssets.getData();
+
+      utils.assets.getAssets.setData(undefined, (old) => {
+        const optimisticAsset = {
+          ...newAsset,
+          id: Math.random(),
+          userId: "",
+          totalValue: newAsset.amount * (newAsset.priceUSD ?? 0),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        return old ? [...old, optimisticAsset] : [optimisticAsset];
+      });
+
+      setOpen(false);
+      return { previousAssets };
+    },
+    onError: (err, newAsset, context) => {
+      utils.assets.getAssets.setData(undefined, context?.previousAssets);
+      setOpen(true);
+    },
+    onSettled: () => {
+      void utils.assets.getAssets.invalidate();
+    },
+  });
+
+  useEffect(() => {
+    async function fetchCryptoList() {
+      try {
+        const res = await fetch(
+          "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1",
+        );
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data: CryptoData[] = await res.json();
+
+        console.log("data", data);
+
+        setCryptoList(
+          data.map((coin) => ({
+            label: `${coin.name} (${coin.symbol.toUpperCase()})`,
+            value: coin.id,
+            priceUSD: coin.current_price,
+          })),
+        );
+      } catch (error) {
+        console.error("Error fetching crypto list:", error);
+        setCryptoList([]);
+      }
+    }
+
+    fetchCryptoList();
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCrypto) return;
+
+    const selected = cryptoList.find((c) => c.value === selectedCrypto);
+    if (!selected) return;
+
+    addAssetMutation.mutate({
+      name: selected.label.split(" (")[0] ?? "", // Get just the name part
+      symbol: selected.label.split(" (")[1]?.replace(")", "") ?? "",
+      amount: amount,
+      priceUSD: selected.priceUSD, // Will be updated with real price
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="fixed bottom-4 right-4 h-16 w-16 rounded-full">
+          <Plus className="h-7 w-7" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add New Asset</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="crypto">Select Cryptocurrency</Label>
+            <Combobox
+              options={cryptoList.map(({ label, value }) => ({ label, value }))}
+              value={selectedCrypto}
+              onChange={setSelectedCrypto}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="amount">Amount</Label>
+            <Input
+              id="amount"
+              type="number"
+              value={amount === 0 ? "" : amount}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                if (newValue === "") {
+                  setAmount(0);
+                } else {
+                  const cleanValue = newValue.replace(/^0+/, "");
+                  setAmount(Number(cleanValue ?? "0"));
+                }
+              }}
+              required
+            />
+          </div>
+
+          <Button
+            type="submit"
+            disabled={!selectedCrypto || addAssetMutation.isLoading}
+          >
+            {addAssetMutation.isLoading ? "Adding..." : "Add Asset"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -13,21 +13,29 @@ datasource db {
 
 model CryptoAsset {
     id        Int      @id @default(autoincrement())
+    userId    String   
+    user      User     @relation(fields: [userId], references: [id])
     name      String
     symbol    String
-    value     Float
-    percentage Float
+    amount     Float
+    priceUSD   Float?
+    totalValue Float?
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
     @@index([symbol])
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
+model User {
+    id        String   @id @default(uuid())
     name      String
+    email     String   @unique
+    password  String
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+    assets    CryptoAsset[]
 
-    @@index([name])
+    @@index([email])
 }
+
+

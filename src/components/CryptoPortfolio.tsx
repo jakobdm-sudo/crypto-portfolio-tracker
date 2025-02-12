@@ -1,33 +1,46 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import PieChart from "./PieChart"
-import CryptoList from "./CryptoList"
-import FloatingActionButton from "./FloatingActionButton"
-import type { CryptoAsset } from "~/types/CryptoAsset"
+import PieChart from "./PieChart";
+import CryptoList from "./CryptoList";
+import FloatingActionButton from "./FloatingActionButton";
+import type { CryptoAsset } from "~/types/CryptoAsset";
+import { ThemeToggle } from "./theme-toggle";
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
+import { ClientOnly } from "~/components/client-only";
 
-const mockData: CryptoAsset[] = [
-  { id: 1, name: "Bitcoin", symbol: "BTC", value: 50_000.00, percentage: 45 },
-  { id: 2, name: "Ethereum", symbol: "ETH", value: 25_000.00, percentage: 30 },
-  { id: 3, name: "Cardano", symbol: "ADA", value: 10_000.00, percentage: 15 },
-  { id: 4, name: "Polkadot", symbol: "DOT", value: 5_000.00, percentage: 10 },
-]
-
-export default function CryptoPortfolio() {
-  const [assets, setAssets] = useState<CryptoAsset[]>(mockData)
-
-  const addAsset = (newAsset: CryptoAsset) => {
-    setAssets([...assets, newAsset])
-  }
-
+export default function CryptoPortfolio({
+  assets,
+  isLoading,
+}: {
+  assets: CryptoAsset[];
+  isLoading: boolean;
+}) {
+  const { data: session } = useSession();
+ 
   return (
     <div className="relative">
-      <div className="mb-8">
-        <PieChart assets={assets} />
-      </div>
-      <CryptoList assets={assets} />
-      <FloatingActionButton onAddAsset={addAsset} />
+      {isLoading ? (
+        <p>Loading assets...</p>
+      ) : assets.length === 0 ? (
+        <p>No assets found. Add your first asset!</p>
+      ) : (
+        <>
+          <div className="mx-4 my-2 flex items-center justify-between">
+            <h1 className="text-2xl font-bold">
+              <span className="text-primary">{session?.user?.name}'s </span>
+              Crypto Portfolio
+            </h1>
+            <ThemeToggle />
+          </div>
+          <div className="mb-8">
+            <PieChart assets={assets} />
+            
+          </div>
+          <CryptoList assets={assets} />
+        </>
+      )}
+      <FloatingActionButton />
     </div>
-  )
+  );
 }
-

@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "~/styles/globals.css";
 import { ThemeProvider } from "~/components/theme-provider";
 import type React from "react"; // Added import for React
+import ClientSessionProvider from "~/components/providers";
+import { TRPCReactProvider } from "~/trpc/react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,15 +21,23 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        <TRPCReactProvider>
+          <ClientSessionProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem
+              disableTransitionOnChange
+
+
+          >
+              {children}
+            </ThemeProvider>
+          </ClientSessionProvider>
+        </TRPCReactProvider>
       </body>
     </html>
+
+
   );
 }

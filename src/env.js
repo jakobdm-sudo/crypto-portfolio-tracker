@@ -9,18 +9,10 @@ export const env = createEnv({
   server: {
     DATABASE_URL: z
       .string()
-      .url()
-      .refine(
-        (str) => !str.includes("YOUR-PASSWORD"),
-        "You forgot to change the default URL",
-      ),
+      .url(),
     DIRECT_URL: z
       .string()
-      .url()
-      .refine(
-        (str) => !str.includes("YOUR-PASSWORD"),
-        "You forgot to change the default URL",
-      ),
+      .url(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
