@@ -8,6 +8,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 import { ClientOnly } from "~/components/client-only";
+import FAB from "./ui/fab";
 
 export default function CryptoPortfolio({
   assets,
@@ -42,7 +43,24 @@ export default function CryptoPortfolio({
           </div>
         </div>
       ) : assets.length === 0 ? (
-        <p className="text-center">No assets found. Add your first asset!</p>
+        <div className="flex h-screen w-screen flex-col items-center justify-center py-2 text-center">
+          <h1 className="mb-2 text-2xl font-bold">
+            Welcome <span className="text-primary">{session?.user?.name}</span>{" "}
+            !
+          </h1>
+          <p> Start by adding your first Assets.</p>
+          <p className="text-center">
+            Use the
+            <span className="px-1">
+              <FAB />
+              -Button
+            </span>
+            at the bottom right corner.
+          </p>
+          <div className="fixed bottom-16 right-4 h-16 w-16 p-0 animate-bounce text-3xl">
+            👇
+          </div>
+        </div>
       ) : (
         <>
           <div className="mx-4 my-2 flex items-center justify-between">

@@ -28,6 +28,8 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    --guest: 250 70% 75%; /* Soft purple */
+    --guest-foreground: 210 40% 98%; /* Light text for contrast */
   }
   .dark {
     --background: 222 47% 11%; /* #1E293B (slate-800) */
@@ -37,7 +39,7 @@
     --popover: 223 47% 11%; /* Same as background */
     --popover-foreground: 210 40% 98%; /* #F8FAFC */
     --primary: 245 80% 65%; /* #69A8FF (bright neon blue) */
-    --primary-foreground: 222 47% 11%; /* #1E293B */
+    --primary-foreground: 210 40% 98%; /* #1E293B */
     --secondary: 217 32% 17%; /* #2A3446 (dark gray-blue) */
     --secondary-foreground: 210 40% 98%; /* #F8FAFC */
     --muted: 217 32% 17%; /* #374151 (gray-700) */
@@ -56,6 +58,8 @@
     --chart-3: 30 85% 55%; /* #FFA947 (warm orange) */
     --chart-4: 280 65% 60%; /* #A855F7 (purple) */
     --chart-5: 340 80% 55%; /* #F43F5E (hot pink) */
+    --guest: 39 100% 50%; /* Slightly deeper purple */
+    --guest-foreground: 210 40% 98%; /* Light text for contrast */
   }
 }
 @layer base {
