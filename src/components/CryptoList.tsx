@@ -97,7 +97,7 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
   };
 
   return (
-    <div className="border-width-2 mx-4 space-y-4 overflow-hidden rounded-lg border border-primary/20 bg-primary/10 p-4 pb-8 shadow-lg md:mx-20">
+    <div className="border-width-2 mx-4 mb-4 space-y-4 overflow-hidden rounded-lg border border-primary/20 bg-primary/10 p-4 pb-8 shadow-lg md:mx-20">
       {/* Header Buttons */}
       <div className="flex flex-col items-end justify-end">
         <div className="flex flex-row items-center justify-end gap-4">
@@ -105,13 +105,13 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
             className="rounded-lg bg-primary p-2"
             onClick={() => setIsEditing(!isEditing)}
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-4 w-4 text-white" />
           </button>
           <button
             className="rounded-lg bg-primary p-2"
             onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
           >
-            <Settings2 className="h-4 w-4" />
+            <Settings2 className="h-4 w-4 text-white" />
           </button>
         </div>
         {isSortMenuOpen && (

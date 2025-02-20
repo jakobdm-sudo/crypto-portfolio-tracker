@@ -103,8 +103,11 @@ export default function FloatingActionButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="fixed bottom-4 right-4 h-16 w-16 rounded-full">
-          <Plus className="h-7 w-7" />
+        <Button className="fixed bottom-4 right-4 h-16 w-16 rounded-full p-0 shadow-lg">
+          <Plus
+            className="scale-[1.5] transform text-white"
+            strokeWidth={1.75}
+          />
         </Button>
       </DialogTrigger>
       <DialogContent>
