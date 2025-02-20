@@ -26,7 +26,7 @@ export default function FloatingActionButton() {
     { label: string; value: string; priceUSD: number }[]
   >([]);
   const [selectedCrypto, setSelectedCrypto] = useState("");
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState("");
 
   const utils = api.useUtils();
   const addAssetMutation = api.assets.addAsset.useMutation({
@@ -85,19 +85,42 @@ export default function FloatingActionButton() {
     fetchCryptoList();
   }, []);
 
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+
+    // Allow empty string for better UX
+    if (value === "" || value === "0" || value === ".") {
+      setAmount(value);
+      return;
+    }
+
+    // Allow valid decimal numbers
+    const number = parseFloat(value);
+    if (!isNaN(number) && number >= 0) {
+      setAmount(value);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!selectedCrypto) return;
 
     const selected = cryptoList.find((c) => c.value === selectedCrypto);
     if (!selected) return;
 
-    addAssetMutation.mutate({
-      name: selected.label.split(" (")[0] ?? "", // Get just the name part
-      symbol: selected.label.split(" (")[1]?.replace(")", "") ?? "",
-      amount: amount,
-      priceUSD: selected.priceUSD, // Will be updated with real price
-    });
+    const numAmount = parseFloat(amount);
+    if (!isNaN(numAmount) && numAmount > 0) {
+      addAssetMutation.mutate({
+        name: selected.label.split(" (")[0] ?? "", // Get just the name part
+        symbol: selected.label.split(" (")[1]?.replace(")", "") ?? "", // Get symbol part
+        amount: numAmount,
+        priceUSD: selected.priceUSD, // Include the price
+      });
+      setAmount("");
+      setSelectedCrypto("");
+      setOpen(false);
+    }
   };
 
   return (
@@ -128,24 +151,17 @@ export default function FloatingActionButton() {
             <Label htmlFor="amount">Amount</Label>
             <Input
               id="amount"
-              type="number"
-              value={amount === 0 ? "" : amount}
-              onChange={(e) => {
-                const newValue = e.target.value;
-                if (newValue === "") {
-                  setAmount(0);
-                } else {
-                  const cleanValue = newValue.replace(/^0+/, "");
-                  setAmount(Number(cleanValue ?? "0"));
-                }
-              }}
-              required
+              type="text"
+              placeholder="Amount"
+              value={amount}
+              onChange={handleAmountChange}
+              className="mt-2"
             />
           </div>
 
           <Button
             type="submit"
-            disabled={!selectedCrypto || addAssetMutation.isLoading}
+            disabled={!selectedCrypto || !amount || addAssetMutation.isLoading}
           >
             {addAssetMutation.isLoading ? "Adding..." : "Add Asset"}
           </Button>
