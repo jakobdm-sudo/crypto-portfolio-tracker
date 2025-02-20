@@ -7,15 +7,16 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    DATABASE_URL: z
-      .string()
-      .url(),
-    DIRECT_URL: z
-      .string()
-      .url(),
+    DATABASE_URL: z.string().url(),
+    DIRECT_URL: z.string().url(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    DISABLE_API_CALLS: z.string().optional(),
+    API_REFETCH_INTERVAL: z
+      .string()
+      .transform((str) => parseInt(str, 10))
+      .optional(),
   },
 
   /**
@@ -35,6 +36,8 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     DIRECT_URL: process.env.DIRECT_URL,
     NODE_ENV: process.env.NODE_ENV,
+    DISABLE_API_CALLS: process.env.DISABLE_API_CALLS,
+    API_REFETCH_INTERVAL: process.env.API_REFETCH_INTERVAL,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**
