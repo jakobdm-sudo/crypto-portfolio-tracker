@@ -1,7 +1,7 @@
 import Image from "next/image";
 import type { CryptoAsset } from "~/types/CryptoAsset";
 import { formatCurrency } from "~/utils/formatters";
-import { Pencil, Settings2, Trash2 } from "lucide-react";
+import { Pencil, Settings2, Trash2, ArrowUpWideNarrow, ArrowDownNarrowWide} from "lucide-react";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { motion, PanInfo, AnimatePresence } from "framer-motion";
 import { api } from "~/trpc/react";
@@ -9,7 +9,7 @@ import { CRYPTO_ICONS, DEFAULT_CRYPTO_ICON } from "~/utils/cryptoIcons";
 
 export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [isSortAsc, setIsSortAsc] = useState(true);
   const [sortBy, setSortBy] = useState<string>("totalValue");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
@@ -96,6 +96,12 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
     }
   };
 
+  const handleSort = () => {
+    setIsSortAsc(!isSortAsc);
+    setSortBy("totalValue");
+    setSortOrder(isSortAsc ? "asc" : "desc");
+  };
+
   return (
     <div className="border-width-2 mx-4 mb-4 space-y-4 overflow-hidden rounded-lg border border-primary/20 bg-primary/10 p-4 pb-8 shadow-lg md:mx-20">
       {/* Header Buttons */}
@@ -109,20 +115,12 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
           </button>
           <button
             className="rounded-lg bg-primary p-2"
-            onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+            onClick={handleSort}
           >
-            <Settings2 className="h-4 w-4 text-white" />
+            {isSortAsc ? (<ArrowUpWideNarrow className="h-4 w-4 text-white" />) : (<ArrowDownNarrowWide className="h-4 w-4 text-white"/>)}
           </button>
         </div>
-        {isSortMenuOpen && (
-          <div className="animate-fade-in mt-2 w-20 rounded-lg bg-card p-2 shadow-lg">
-            <button className="w-full rounded-lg p-2 hover:bg-primary/10">
-              Sort by Total Value
-            </button>
-          </div>
-        )}
       </div>
-
       <AnimatePresence mode="popLayout">
         {sortedAssets.map((asset) => (
           <motion.div

@@ -71,19 +71,19 @@ export default function PieChart({ assets }: { assets: CryptoAsset[] }) {
     0,
   );
 
-  const data = assets.map((asset) => {
-    const value = asset.totalValue ?? 0;
-    const percentage = ((value / totalPortfolioValue) * 100).toFixed(2);
-    const item = {
-      name: asset.name,
-      symbol: asset.symbol,
-      value: value,
-      formattedValue: formatCurrency(value),
-      percentage: percentage,
-    };
-    console.log("Created data item:", item);
-    return item;
-  });
+  const data = assets
+    .map((asset) => {
+      const value = asset.totalValue ?? 0;
+      const percentage = ((value / totalPortfolioValue) * 100).toFixed(2);
+      return {
+        name: asset.name,
+        symbol: asset.symbol,
+        value: value,
+        formattedValue: formatCurrency(value),
+        percentage: percentage,
+      };
+    })
+    .sort((a, b) => parseFloat(b.percentage) - parseFloat(a.percentage));
 
   return (
     <div className="border-width-2 mx-4 my-4 mt-12 rounded-lg border border-primary/20 bg-primary/10 p-4 pb-4 shadow-lg backdrop-blur-md md:mx-20 md:pb-12">

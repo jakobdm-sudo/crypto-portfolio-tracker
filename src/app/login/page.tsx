@@ -61,7 +61,7 @@ export default function LoginPage() {
           className="border p-2 rounded"
           required
         />
-        <button type="submit" className="bg-blue-500 text-white py-2 rounded">
+        <button type="submit" className="bg-primary text-white py-2 rounded">
           Sign In
         </button>
       </form>
