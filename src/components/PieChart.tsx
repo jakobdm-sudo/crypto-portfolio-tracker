@@ -15,6 +15,33 @@ import { useTheme } from "next-themes";
 import { formatCurrency } from "~/utils/formatters";
 import { CRYPTO_ICONS, DEFAULT_CRYPTO_COLOR } from "~/utils/cryptoIcons";
 
+type TooltipPayload = {
+  name: string;
+  value: number;
+  payload: {
+    name: string;
+    symbol: string;
+    value: number;
+    formattedValue: string;
+    percentage: string;
+  };
+};
+
+type CustomTooltipProps = {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    payload: {
+      name: string;
+      symbol: string;
+      value: number;
+      formattedValue: string;
+      percentage: string;
+    };
+  }>;
+};
+
 const getAssetColor = (asset: CryptoAsset) =>
   CRYPTO_ICONS[asset.symbol]?.color ?? DEFAULT_CRYPTO_COLOR;
 
@@ -22,16 +49,23 @@ export default function PieChart({ assets }: { assets: CryptoAsset[] }) {
   const { theme } = useTheme();
 
   const totalPortfolioValue = assets.reduce(
-    (acc, asset) => acc + asset.totalValue,
+    (acc, asset) => acc + (asset.totalValue ?? 0),
     0,
-  ); //calc portfolio value TODO: chnage to hook when using actual crypto prices
+  );
 
-  const data = assets.map((asset) => ({
-    name: asset.name,
-    symbol: asset.symbol,
-    value: asset.totalValue,
-    formattedValue: formatCurrency(asset.totalValue),
-  }));
+  const data = assets.map((asset) => {
+    const value = asset.totalValue ?? 0;
+    const percentage = ((value / totalPortfolioValue) * 100).toFixed(2);
+    const item = {
+      name: asset.name,
+      symbol: asset.symbol,
+      value: value,
+      formattedValue: formatCurrency(value),
+      percentage: percentage,
+    };
+    console.log("Created data item:", item);
+    return item;
+  });
 
   return (
     <div className="border-width-2 mx-4 my-4 mt-12 rounded-lg border border-primary/20 bg-primary/10 p-4 pb-12 shadow-lg backdrop-blur-md md:mx-20">
@@ -89,35 +123,19 @@ export default function PieChart({ assets }: { assets: CryptoAsset[] }) {
             />
 
             <Tooltip
-              formatter={(value: number) => formatCurrency(value)}
-              contentStyle={{
-                backgroundColor:
-                  theme === "dark"
-                    ? "hsl(var(--background))"
-                    : "hsl(var(--card))",
-                borderColor:
-                  theme === "dark"
-                    ? "hsl(var(--border))"
-                    : "hsl(var(--border))",
-                color:
-                  theme === "dark"
-                    ? "hsl(var(--muted-foreground))"
-                    : "hsl(var(--foreground))",
-                borderWidth: "2px",
-                borderRadius: "0.5rem",
-                padding: "0.5rem",
-              }}
-              labelStyle={{
-                color:
-                  theme === "dark"
-                    ? "hsl(var(--muted-foreground))"
-                    : "hsl(var(--foreground))",
-              }}
-              itemStyle={{
-                color:
-                  theme === "dark"
-                    ? "hsl(var(--muted-foreground))"
-                    : "hsl(var(--foreground))",
+              content={({ active, payload }: CustomTooltipProps) => {
+                if (!active || !payload?.length) return null;
+
+                const data = payload[0].payload;
+                return (
+                  <div className="rounded-lg border-2 border-border bg-card p-2">
+                    <p className="font-bold">{data.name}</p>
+                    <p>{data.formattedValue}</p>
+                    <p className="text-muted-foreground">
+                      {data.percentage}%
+                    </p>
+                  </div>
+                );
               }}
             />
             <Legend

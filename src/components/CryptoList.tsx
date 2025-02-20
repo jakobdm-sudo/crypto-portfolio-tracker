@@ -13,6 +13,9 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
   const [sortBy, setSortBy] = useState<string>("totalValue");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
+  const [editingAmounts, setEditingAmounts] = useState<Record<number, string>>(
+    {},
+  );
 
   const utils = api.useUtils();
   const deleteAssetMutation = api.assets.deleteAsset.useMutation({
@@ -32,6 +35,32 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
     },
     onSettled: () => {
       utils.assets.getAssets.invalidate();
+    },
+  });
+
+  const updateAssetMutation = api.assets.updateAsset.useMutation({
+    onMutate: async (updatedAsset) => {
+      await utils.assets.getAssets.cancel();
+      const previousAssets = utils.assets.getAssets.getData();
+
+      utils.assets.getAssets.setData(undefined, (old) =>
+        old?.map((asset) =>
+          asset.id === updatedAsset.id
+            ? {
+                ...asset,
+                amount: updatedAsset.amount,
+                totalValue: Number(
+                  (updatedAsset.amount * (asset.priceUSD ?? 0)).toFixed(8),
+                ),
+              }
+            : asset,
+        ),
+      );
+
+      return { previousAssets };
+    },
+    onError: (err, updatedAsset, context) => {
+      utils.assets.getAssets.setData(undefined, context?.previousAssets);
     },
   });
 
@@ -55,8 +84,20 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
     }
   };
 
+  const handleAmountChange = (asset: CryptoAsset, value: string) => {
+    setEditingAmounts((prev) => ({ ...prev, [asset.id]: value }));
+
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue >= 0) {
+      updateAssetMutation.mutate({
+        id: asset.id,
+        amount: numValue,
+      });
+    }
+  };
+
   return (
-    <div className="border-width-2 md:mx-20 mx-4 space-y-4 overflow-hidden rounded-lg border border-primary/20 bg-primary/10 p-4 pb-8 shadow-lg">
+    <div className="border-width-2 mx-4 space-y-4 overflow-hidden rounded-lg border border-primary/20 bg-primary/10 p-4 pb-8 shadow-lg md:mx-20">
       {/* Header Buttons */}
       <div className="flex flex-col items-end justify-end">
         <div className="flex flex-row items-center justify-end gap-4">
@@ -114,17 +155,17 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
 
             {/* Draggable Card */}
             <motion.div
-              className="relative flex w-full items-center rounded-lg bg-card p-4 shadow-xl"
-              drag="x"
-              dragConstraints={{ left: -150, right: 0 }}
-              dragElastic={0.1}
+              className={`relative flex h-[88px] w-full items-center rounded-lg ${isEditing ? "border-2 border-primary" : "border-2 border-transparent"} bg-card p-4 shadow-xl`}
+              drag={isEditing ? false : "x"}
+              dragConstraints={isEditing ? undefined : { left: -150, right: 0 }}
+              dragElastic={isEditing ? undefined : 0.1}
               dragMomentum={false}
               transition={{
                 type: "spring",
                 damping: 20,
                 stiffness: 200,
               }}
-              onDragEnd={(_, info) => handleDragEnd(info, asset)}
+              onDragEnd={(_, info) => !isEditing && handleDragEnd(info, asset)}
             >
               <div className="mr-4 flex-shrink-0">
                 <Image
@@ -136,17 +177,56 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
                 />
               </div>
               <div className="flex-grow">
-                <h3 className="text-lg font-semibold">{asset.name}</h3>
-                <p className="text-sm text-muted-foreground">{asset.symbol}</p>
+                <h3 className="text-sm font-semibold md:text-lg">
+                  {asset.name}
+                </h3>
+                <p className="text-xs text-muted-foreground md:text-sm">
+                  {asset.symbol}
+                </p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-semibold">
+                <p className="text-sm font-semibold md:text-lg">
                   {formatCurrency(asset.totalValue ?? 0)}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {asset.amount} {asset.symbol} @{" "}
-                  {formatCurrency(asset.priceUSD ?? 0)}
-                </p>
+                <div className="flex flex-row items-center justify-center text-xs text-muted-foreground md:text-sm">
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      className="h-[28px] w-[6rem] rounded-md border border-input bg-background px-1 text-xs leading-[28px] [appearance:textfield] md:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      value={editingAmounts[asset.id] ?? asset.amount}
+                      onChange={(e) =>
+                        handleAmountChange(asset, e.target.value)
+                      }
+                      min="0"
+                      step="any"
+                      onFocus={(e) => {
+                        setEditingAmounts((prev) => ({
+                          ...prev,
+                          [asset.id]: asset.amount.toString(),
+                        }));
+                        e.target.select();
+                      }}
+                      onBlur={() => {
+                        setEditingAmounts((prev) => {
+                          const newState = { ...prev };
+                          delete newState[asset.id];
+                          return newState;
+                        });
+                      }}
+                    />
+                  ) : (
+                    <span className="inline-flex h-[28px] items-center px-1">
+                      {Number(asset.amount).toLocaleString("en-US", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 8,
+                        useGrouping: false,
+                      })}
+                    </span>
+                  )}
+                  <span className="inline-flex h-[28px] items-center">
+                    {asset.symbol} @ {formatCurrency(asset.priceUSD ?? 0)}
+                  </span>
+                </div>
               </div>
             </motion.div>
           </motion.div>
