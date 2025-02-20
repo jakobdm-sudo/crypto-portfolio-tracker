@@ -48,7 +48,7 @@ export default function CryptoPortfolio({
             Welcome <span className="text-primary">{session?.user?.name}</span>{" "}
             !
           </h1>
-          <p> Start by adding your first Assets.</p>
+          <p> Start by adding your first Asset.</p>
           <p className="text-center">
             Use the
             <span className="px-1">

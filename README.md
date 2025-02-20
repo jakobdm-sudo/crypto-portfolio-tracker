@@ -2,14 +2,15 @@
 
 A simple, responsive web application for tracking your cryptocurrency portfolio. Built as a **type-safe** Next.js app using **tRPC**, **TailwindCSS**, and **Prisma**.  
 Deployed on **Vercel** and accessible here: [crypto-portfolio-tracker-iota.vercel.app](https://crypto-portfolio-tracker-iota.vercel.app).
+Use the Guest-Login to try it out without an account!
 
 ---
 
 ## ✨ Features
 
-- 🔐 **Secure Authentication**: Email/password authentication using **NextAuth.js**.
 - 📊 **Interactive Charts**: Real-time portfolio visualization with **Recharts**.
 - 💰 **Live Price Updates**: Automatic price updates for cryptocurrencies using the **CoinGecko API**.
+- 🔐 **Secure Authentication**: Authentication using **NextAuth.js**.
 - 📱 **Responsive Design**: Optimized for both desktop and mobile devices.
 - ⚡ **Real-time Updates**: Automatic portfolio value recalculation.
 - 🎯 **Intuitive UX**:
