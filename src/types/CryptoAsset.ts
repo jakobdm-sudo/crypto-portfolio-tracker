@@ -8,4 +8,5 @@ export interface CryptoAsset {
   totalValue?: number; // Optional: Total value of this asset (amount * priceUSD)
   createdAt: string; // Prisma `DateTime` is stored as an ISO string in TypeScript
   updatedAt: string;
+  portfolioPercentage?: string;
 }

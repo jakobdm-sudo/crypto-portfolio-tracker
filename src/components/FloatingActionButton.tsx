@@ -75,7 +75,7 @@ export default function FloatingActionButton() {
             value: coin.id,
             priceUSD: coin.current_price,
           })),
-        );
+        )
       } catch (error) {
         console.error("Error fetching crypto list:", error);
         setCryptoList([]);

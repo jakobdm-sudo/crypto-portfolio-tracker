@@ -1,27 +1,43 @@
+"use client";
+
 import Image from "next/image";
 import type { CryptoAsset } from "~/types/CryptoAsset";
 import { formatCurrency } from "~/utils/formatters";
-import { Pencil, Settings2, Trash2, ArrowUpWideNarrow, ArrowDownNarrowWide} from "lucide-react";
+import {
+  Pencil,
+  Settings2,
+  Trash2,
+  ArrowUpWideNarrow,
+  ArrowDownNarrowWide,
+} from "lucide-react";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { motion, PanInfo, AnimatePresence } from "framer-motion";
 import { api } from "~/trpc/react";
 import { CRYPTO_ICONS, DEFAULT_CRYPTO_ICON } from "~/utils/cryptoIcons";
 
-export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
+export default function CryptoList() {
+  const { data: configData } = api.config.getRefetchInterval.useQuery();
+  const refetchInterval = configData ?? 1800000; // 30 minutes default
+
+  const [assets] = api.assets.getAssets.useSuspenseQuery(undefined, {
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    refetchInterval: refetchInterval,
+  });
   const [isEditing, setIsEditing] = useState(false);
-  const [isSortAsc, setIsSortAsc] = useState(true);
+  const [isSortAsc, setIsSortAsc] = useState(false);
   const [sortBy, setSortBy] = useState<string>("totalValue");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   const [editingAmounts, setEditingAmounts] = useState<Record<number, string>>(
     {},
   );
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
 
   const utils = api.useUtils();
+
   const deleteAssetMutation = api.assets.deleteAsset.useMutation({
     onMutate: async (deletedAsset) => {
       await utils.assets.getAssets.cancel();
-
       const previousAssets = utils.assets.getAssets.getData();
 
       utils.assets.getAssets.setData(undefined, (old) =>
@@ -30,11 +46,11 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
 
       return { previousAssets };
     },
-    onError: (err, deletedAsset, context) => {
+    onError: (err, newAsset, context) => {
       utils.assets.getAssets.setData(undefined, context?.previousAssets);
     },
     onSettled: () => {
-      utils.assets.getAssets.invalidate();
+      void utils.assets.getAssets.invalidate();
     },
   });
 
@@ -49,9 +65,7 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
             ? {
                 ...asset,
                 amount: updatedAsset.amount,
-                totalValue: Number(
-                  (updatedAsset.amount * (asset.priceUSD ?? 0)).toFixed(8),
-                ),
+                totalValue: updatedAsset.amount * (asset.priceUSD ?? 0),
               }
             : asset,
         ),
@@ -59,47 +73,64 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
 
       return { previousAssets };
     },
-    onError: (err, updatedAsset, context) => {
+    onError: (err, newAsset, context) => {
       utils.assets.getAssets.setData(undefined, context?.previousAssets);
+    },
+    onSettled: () => {
+      void utils.assets.getAssets.invalidate();
     },
   });
 
+  if (!assets) return null;
+
   const sortedAssets = [...assets].sort((a, b) => {
     if (sortBy === "totalValue") {
-      return sortOrder === "asc"
+      return isSortAsc
         ? (a.totalValue ?? 0) - (b.totalValue ?? 0)
         : (b.totalValue ?? 0) - (a.totalValue ?? 0);
     }
-    return sortOrder === "asc"
+    return isSortAsc
       ? a.name.localeCompare(b.name)
       : b.name.localeCompare(a.name);
   });
 
   const handleDragEnd = async (info: PanInfo, asset: CryptoAsset) => {
-    const threshold = -100;
-
-    if (info.offset.x < threshold) {
-      setDeletingIds((prev) => new Set(prev).add(asset.id));
-      deleteAssetMutation.mutate({ id: asset.id });
+    if (Math.abs(info.offset.x) > 100) {
+      setDeletingIds((prev) => new Set([...prev, asset.id]));
+      await deleteAssetMutation.mutateAsync({ id: asset.id });
     }
   };
 
   const handleAmountChange = (asset: CryptoAsset, value: string) => {
-    setEditingAmounts((prev) => ({ ...prev, [asset.id]: value }));
-
     const numValue = parseFloat(value);
     if (!isNaN(numValue) && numValue >= 0) {
-      updateAssetMutation.mutate({
-        id: asset.id,
-        amount: numValue,
-      });
+      setEditingAmounts((prev) => ({
+        ...prev,
+        [asset.id]: value,
+      }));
     }
+  };
+
+  const handleAmountBlur = (assetId: number) => {
+    const newAmount = editingAmounts[assetId];
+    if (newAmount) {
+      const numValue = parseFloat(newAmount);
+      if (!isNaN(numValue) && numValue >= 0) {
+        updateAssetMutation.mutate({
+          id: assetId,
+          amount: numValue,
+        });
+      }
+    }
+    setEditingAmounts((prev) => {
+      const newState = { ...prev };
+      delete newState[assetId];
+      return newState;
+    });
   };
 
   const handleSort = () => {
     setIsSortAsc(!isSortAsc);
-    setSortBy("totalValue");
-    setSortOrder(isSortAsc ? "asc" : "desc");
   };
 
   return (
@@ -113,11 +144,12 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
           >
             <Pencil className="h-4 w-4 text-white" />
           </button>
-          <button
-            className="rounded-lg bg-primary p-2"
-            onClick={handleSort}
-          >
-            {isSortAsc ? (<ArrowUpWideNarrow className="h-4 w-4 text-white" />) : (<ArrowDownNarrowWide className="h-4 w-4 text-white"/>)}
+          <button className="rounded-lg bg-primary p-2" onClick={handleSort}>
+            {isSortAsc ? (
+              <ArrowUpWideNarrow className="h-4 w-4 text-white" />
+            ) : (
+              <ArrowDownNarrowWide className="h-4 w-4 text-white" />
+            )}
           </button>
         </div>
       </div>
@@ -195,8 +227,7 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
                       onChange={(e) =>
                         handleAmountChange(asset, e.target.value)
                       }
-                      min="0"
-                      step="any"
+                      onBlur={() => handleAmountBlur(asset.id)}
                       onFocus={(e) => {
                         setEditingAmounts((prev) => ({
                           ...prev,
@@ -204,13 +235,8 @@ export default function CryptoList({ assets }: { assets: CryptoAsset[] }) {
                         }));
                         e.target.select();
                       }}
-                      onBlur={() => {
-                        setEditingAmounts((prev) => {
-                          const newState = { ...prev };
-                          delete newState[asset.id];
-                          return newState;
-                        });
-                      }}
+                      min="0"
+                      step="any"
                     />
                   ) : (
                     <span className="inline-flex h-[28px] items-center px-1">

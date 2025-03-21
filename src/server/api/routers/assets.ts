@@ -1,69 +1,114 @@
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { env } from "~/env";
+import type { CryptoAsset } from "~/types/CryptoAsset";
+
+// Cache for crypto prices to avoid hitting rate limits
+const priceCache: Record<string, { price: number; timestamp: number }> = {};
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+async function fetchCryptoPrices(
+  assetNames: string[],
+): Promise<Map<string, number>> {
+  // Skip API calls if disabled (for development/testing)
+  if (env.DISABLE_API_CALLS) {
+    return new Map(assetNames.map((name) => [name.toLowerCase(), 1]));
+  }
+
+  try {
+    const ids = assetNames.join(",");
+    const response = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
+    );
+
+    if (!response.ok) {
+      throw new Error(`CoinGecko API error: ${response.statusText}`);
+    }
+
+    const data: Record<string, { usd: number }> = await response.json();
+    return new Map(
+      Object.entries(data).map(([id, prices]) => [
+        id.toLowerCase(),
+        prices.usd,
+      ]),
+    );
+  } catch (error) {
+    console.error("Error fetching crypto prices:", error);
+    // Return cached prices if available, otherwise use 1 as fallback
+    return new Map(
+      assetNames.map((name) => [
+        name.toLowerCase(),
+        priceCache[name.toLowerCase()]?.price ?? 1,
+      ]),
+    );
+  }
+}
+
+async function updateAssetPrices(
+  assets: CryptoAsset[],
+): Promise<CryptoAsset[]> {
+  if (!assets.length) return assets;
+
+  const now = Date.now();
+  const namesToFetch = assets
+    .map((asset) => asset.name.toLowerCase())
+    .filter((name) => {
+      const cached = priceCache[name];
+      return !cached || now - cached.timestamp > CACHE_DURATION;
+    });
+
+  if (namesToFetch.length > 0) {
+    const prices = await fetchCryptoPrices(namesToFetch);
+
+    // Update price cache
+    for (const [name, price] of prices.entries()) {
+      priceCache[name] = { price, timestamp: now };
+    }
+  }
+
+  // Update assets with new prices
+  return assets.map((asset) => {
+    const name = asset.name.toLowerCase();
+    const price = priceCache[name]?.price ?? 1;
+    return {
+      ...asset,
+      priceUSD: price,
+      totalValue: asset.amount * price,
+    };
+  });
+}
 
 export const assetsRouter = createTRPCRouter({
   getAssets: protectedProcedure.query(async ({ ctx }) => {
-    try {
-      // Fetch user assets from the database
-      const assets = await ctx.db.cryptoAsset.findMany({
-        where: { userId: ctx.session?.user?.id },
-      });
-
-      if (!assets.length) return [];
-
-      // Check if API calls are disabled (for Vercel deployment)
-      if (process.env.DISABLE_API_CALLS === "true") {
-        return assets;
-      }
-
-      // Disbale API calls for testing
-      const isAPIEnabled = false;
-      if (isAPIEnabled) {
-        return assets;
-      }
-
-      // Use name for API calls (lowercase)
-      const ids = assets.map((asset) => asset.name.toLowerCase()).join(",");
-      const priceRes = await fetch(
-        `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&per_page=100&page=1&sparkline=false`,
-      );
-
-      if (!priceRes.ok) {
-        throw new Error(`API request failed: ${await priceRes.text()}`);
-      }
-
-      const priceData: Array<{ id: string; current_price: number }> =
-        await priceRes.json();
-
-      if (!Array.isArray(priceData)) {
-        throw new Error("Invalid API response format");
-      }
-
-      // Create a map for easier price lookup
-      const priceMap = new Map(
-        priceData.map((coin) => [coin.id, coin.current_price]),
-      );
-
-      // Update asset prices & total value dynamically
-      return assets.map((asset) => ({
-        ...asset,
-        priceUSD: priceMap.get(asset.name.toLowerCase()) ?? asset.priceUSD,
-        totalValue: Number(
-          (
-            asset.amount *
-            (priceMap.get(asset.name.toLowerCase()) ?? asset.priceUSD)
-          ).toFixed(8),
-        ),
-      }));
-    } catch (error) {
-      console.error("Error in getAssets:", error);
+    if (!ctx.session?.user?.id) {
       throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to fetch asset data",
-        cause: error,
+        code: "UNAUTHORIZED",
+        message: "User not authenticated",
       });
     }
+
+    // First get static data from database
+    const assets = await ctx.db.cryptoAsset.findMany({
+      where: { userId: ctx.session.user.id },
+    });
+
+    // Then update with fresh prices
+    const updatedAssets = await updateAssetPrices(assets);
+
+    // Calculate total portfolio value
+    const totalPortfolioValue = updatedAssets.reduce(
+      (sum, asset) => sum + (asset.totalValue ?? 0),
+      0,
+    );
+
+    // Return assets with portfolio percentages
+    return updatedAssets.map((asset) => ({
+      ...asset,
+      portfolioPercentage: asset.totalValue
+        ? ((asset.totalValue / totalPortfolioValue) * 100).toFixed(2)
+        : "0.00",
+    }));
   }),
 
   addAsset: protectedProcedure
@@ -75,9 +120,7 @@ export const assetsRouter = createTRPCRouter({
         priceUSD: z.number(),
       }),
     )
-    .mutation(({ ctx, input }) => {
-      console.log("User ID in addAsset:", ctx.session?.user?.id); // Debugging log
-
+    .mutation(async ({ ctx, input }) => {
       if (!ctx.session?.user?.id) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
@@ -85,9 +128,9 @@ export const assetsRouter = createTRPCRouter({
         });
       }
 
-      return ctx.db.cryptoAsset.create({
+      const asset = await ctx.db.cryptoAsset.create({
         data: {
-          userId: ctx.session?.user?.id,
+          userId: ctx.session.user.id,
           name: input.name,
           symbol: input.symbol,
           amount: input.amount,
@@ -95,6 +138,14 @@ export const assetsRouter = createTRPCRouter({
           totalValue: input.amount * input.priceUSD,
         },
       });
+
+      // Update price cache with the new price
+      priceCache[input.name.toLowerCase()] = {
+        price: input.priceUSD,
+        timestamp: Date.now(),
+      };
+
+      return asset;
     }),
 
   deleteAsset: protectedProcedure
@@ -121,29 +172,45 @@ export const assetsRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.number(),
-        amount: z.number(),
+        amount: z.number().min(0),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const asset = await ctx.db.cryptoAsset.findUnique({
-        where: { id: input.id, userId: ctx.session?.user?.id },
-      });
-
-      if (!asset) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
+      if (!ctx.session?.user?.id) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "User not authenticated",
+        });
       }
 
-      // Calculate new total value using existing price
-      const totalValue = Number(
-        (input.amount * (asset.priceUSD ?? 0)).toFixed(8),
-      );
+      // First verify the asset belongs to the user
+      const existingAsset = await ctx.db.cryptoAsset.findFirst({
+        where: {
+          id: input.id,
+          userId: ctx.session.user.id,
+        },
+      });
 
-      return ctx.db.cryptoAsset.update({
+      if (!existingAsset) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Asset not found",
+        });
+      }
+
+      // Get current price from cache or API
+      const name = existingAsset.name.toLowerCase();
+      const price = priceCache[name]?.price ?? 1;
+
+      // Update the asset with new amount and calculated total value
+      const updatedAsset = await ctx.db.cryptoAsset.update({
         where: { id: input.id },
         data: {
           amount: input.amount,
-          totalValue: totalValue,
+          totalValue: input.amount * price,
         },
       });
+
+      return updatedAsset;
     }),
 });
