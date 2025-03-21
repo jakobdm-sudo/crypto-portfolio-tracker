@@ -4,8 +4,7 @@ A simple, responsive web application for tracking your cryptocurrency portfolio.
 Built as a **type-safe** Next.js app using **tRPC**, **TailwindCSS**, and **Prisma**.
 
 
-Deployed on **Vercel** and **accessible here**: [crypto-portfolio-tracker-iota.vercel.app](https://crypto-portfolio-tracker-iota.vercel.app).  
-Use the **guest-login** to try it out without an account!
+
 
 ---
 
