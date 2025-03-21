@@ -65,7 +65,15 @@ const useIsMobile = () => {
 };
 
 export default function PieChart() {
-  const { data: configData } = api.config.getRefetchInterval.useQuery();
+  const { data: configData } = api.config.getRefetchInterval.useQuery(
+    undefined,
+    {
+      retry: false,
+      onError: () => {
+        return 1800000;
+      },
+    },
+  );
   const refetchInterval = configData ?? 1800000; // 30 minutes default
 
   const [assets] = api.assets.getAssets.useSuspenseQuery(undefined, {

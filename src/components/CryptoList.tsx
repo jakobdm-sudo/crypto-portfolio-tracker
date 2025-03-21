@@ -16,7 +16,15 @@ import { api } from "~/trpc/react";
 import { CRYPTO_ICONS, DEFAULT_CRYPTO_ICON } from "~/utils/cryptoIcons";
 
 export default function CryptoList() {
-  const { data: configData } = api.config.getRefetchInterval.useQuery();
+  const { data: configData } = api.config.getRefetchInterval.useQuery(
+    undefined,
+    {
+      retry: false,
+      onError: () => {
+        return 1800000;
+      },
+    },
+  );
   const refetchInterval = configData ?? 1800000; // 30 minutes default
 
   const [assets] = api.assets.getAssets.useSuspenseQuery(undefined, {

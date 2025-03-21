@@ -3,6 +3,9 @@ import DashboardClient from "./DashboardClient";
 import PieChartSkeleton from "~/components/skeletons/PieChartSkeleton";
 import CryptoListSkeleton from "~/components/skeletons/CryptoListSkeleton";
 
+// Add this line to make the page dynamic
+export const dynamic = "force-dynamic";
+
 export default function DashboardPage() {
   return (
     <Suspense
