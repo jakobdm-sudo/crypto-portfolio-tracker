@@ -9,7 +9,7 @@ export default function DashboardPage() {
       fallback={
         <div className="relative">
           <div className="mx-4 my-2 flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Loading...</h1>
+            <h1 className="text-2xl font-bold">Loading Dashboard...</h1>
           </div>
           <PieChartSkeleton />
           <CryptoListSkeleton />

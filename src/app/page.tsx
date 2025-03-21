@@ -3,6 +3,9 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Suspense } from "react";
+import PieChartSkeleton from "~/components/skeletons/PieChartSkeleton";
+import CryptoListSkeleton from "~/components/skeletons/CryptoListSkeleton";
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -16,6 +19,20 @@ export default function Home() {
     }
   }, [session, status, router]);
 
+  // Show skeleton UI while checking auth status
+  if (status === "loading") {
+    return (
+      <div className="relative">
+        <div className="mx-4 my-2 flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Loading...</h1>
+        </div>
+        <PieChartSkeleton />
+        <CryptoListSkeleton />
+      </div>
+    );
+  }
+
+  // Show spinner only during navigation
   return (
     <div className="flex h-screen w-screen items-center justify-center text-center">
       <div role="status">
@@ -37,5 +54,5 @@ export default function Home() {
         </svg>
       </div>
     </div>
-  ); // Show loading state while redirecting
+  );
 }
