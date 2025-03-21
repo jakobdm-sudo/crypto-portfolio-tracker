@@ -12,7 +12,10 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
-    DISABLE_API_CALLS: z.string().optional(),
+    DISABLE_API_CALLS: z
+      .enum(["true", "false"])
+      .optional()
+      .transform((str) => str === "true"),
     API_REFETCH_INTERVAL: z
       .string()
       .transform((str) => parseInt(str, 10))

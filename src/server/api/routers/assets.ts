@@ -11,37 +11,64 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 async function fetchCryptoPrices(
   assetNames: string[],
 ): Promise<Map<string, number>> {
-  // Skip API calls if disabled (for development/testing)
   if (env.DISABLE_API_CALLS) {
+    console.log("API calls disabled, using fallback prices");
     return new Map(assetNames.map((name) => [name.toLowerCase(), 1]));
   }
 
   try {
-    const ids = assetNames.join(",");
-    const response = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
-    );
+    const ids = assetNames.join(",").toLowerCase();
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`;
+
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+      },
+      cache: "no-store", // Disable caching to ensure fresh data
+    });
 
     if (!response.ok) {
-      throw new Error(`CoinGecko API error: ${response.statusText}`);
+      throw new Error(`CoinGecko API error: ${response.status}`);
     }
 
     const data: Record<string, { usd: number }> = await response.json();
-    return new Map(
-      Object.entries(data).map(([id, prices]) => [
-        id.toLowerCase(),
-        prices.usd,
-      ]),
-    );
+    const prices = new Map<string, number>();
+
+    for (const [id, priceData] of Object.entries(data)) {
+      if (priceData?.usd) {
+        const price = priceData.usd;
+        prices.set(id.toLowerCase(), price);
+        // Update cache
+        priceCache[id.toLowerCase()] = {
+          price,
+          timestamp: Date.now(),
+        };
+      }
+    }
+
+    if (prices.size === 0) {
+      throw new Error("No valid prices returned from API");
+    }
+
+    console.log("Successfully fetched prices:", Object.fromEntries(prices));
+    return prices;
   } catch (error) {
     console.error("Error fetching crypto prices:", error);
-    // Return cached prices if available, otherwise use 1 as fallback
-    return new Map(
-      assetNames.map((name) => [
-        name.toLowerCase(),
-        priceCache[name.toLowerCase()]?.price ?? 1,
-      ]),
-    );
+
+    // Return cached prices if available
+    const cachedPrices = new Map<string, number>();
+    for (const name of assetNames) {
+      const normalizedName = name.toLowerCase();
+      const cached = priceCache[normalizedName];
+
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        cachedPrices.set(normalizedName, cached.price);
+      } else {
+        cachedPrices.set(normalizedName, 1); // Fallback price
+      }
+    }
+
+    return cachedPrices;
   }
 }
 
@@ -50,33 +77,26 @@ async function updateAssetPrices(
 ): Promise<CryptoAsset[]> {
   if (!assets.length) return assets;
 
-  const now = Date.now();
-  const namesToFetch = assets
-    .map((asset) => asset.name.toLowerCase())
-    .filter((name) => {
-      const cached = priceCache[name];
-      return !cached || now - cached.timestamp > CACHE_DURATION;
+  try {
+    const prices = await fetchCryptoPrices(assets.map((asset) => asset.name));
+
+    return assets.map((asset) => {
+      const price = prices.get(asset.name.toLowerCase()) ?? 1;
+      return {
+        ...asset,
+        priceUSD: price,
+        totalValue: asset.amount * price,
+      };
     });
-
-  if (namesToFetch.length > 0) {
-    const prices = await fetchCryptoPrices(namesToFetch);
-
-    // Update price cache
-    for (const [name, price] of prices.entries()) {
-      priceCache[name] = { price, timestamp: now };
-    }
-  }
-
-  // Update assets with new prices
-  return assets.map((asset) => {
-    const name = asset.name.toLowerCase();
-    const price = priceCache[name]?.price ?? 1;
-    return {
+  } catch (error) {
+    console.error("Error updating asset prices:", error);
+    // Return assets with fallback prices if update fails
+    return assets.map((asset) => ({
       ...asset,
-      priceUSD: price,
-      totalValue: asset.amount * price,
-    };
-  });
+      priceUSD: 1,
+      totalValue: asset.amount * 1,
+    }));
+  }
 }
 
 export const assetsRouter = createTRPCRouter({

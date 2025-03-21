@@ -19,9 +19,9 @@ export default function CryptoList() {
   const { data: configData } = api.config.getRefetchInterval.useQuery(
     undefined,
     {
-      retry: false,
+      retry: 1,
       onError: () => {
-        return 1800000;
+        console.error("Failed to fetch config, using default interval");
       },
     },
   );
@@ -32,6 +32,7 @@ export default function CryptoList() {
     refetchOnReconnect: false,
     refetchOnMount: false,
     refetchInterval: refetchInterval,
+    retry: 2,
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isSortAsc, setIsSortAsc] = useState(false);
